@@ -25,32 +25,57 @@ const (
 type Game struct{
 	snake *Snake
 	food *Food
+	gameOver bool
 }
 
 func(g *Game) Update() error {
+	if g.gameOver {
+		if ebiten.IsKeyPressed(ebiten.KeyEnter) {
+			g.gameOver = false
+		}
+		return nil
+	}
 	g.snake.moveSnake()
 	g.updateSnake()
+	g.collisionDetection()
+	if g.gameOver {
+		g.resetGame()
+	}
 	return nil
 }
 
 func(g *Game) Draw(screen *ebiten.Image) {
-	
-	//draw snake
-	for _, s := range g.snake.body {
-		vector.DrawFilledRect(screen, float32(s.x * GRID_SIZE), float32(s.y * GRID_SIZE),
-		float32(GRID_SIZE), float32(GRID_SIZE), color.White, false)
-	}
-
-	//draw food
-	vector.DrawFilledRect(screen, float32(g.food.x * GRID_SIZE), float32(g.food.y * GRID_SIZE),
-		float32(GRID_SIZE), float32(GRID_SIZE), color.RGBA{255, 0, 0, 0}, false)
-	
-	//draw score
 	ops := &text.DrawOptions{}
-	ops.GeoM.Translate(0, 0)
-	ops.ColorScale.ScaleWithColor(color.White)
-	text.Draw(screen, fmt.Sprintf("Score: %v", g.snake.score), fontFace, ops) 
-	
+	//draw game over
+	if g.gameOver {
+		mainText := "GAME OVER"
+		w, h := text.Measure(mainText, largeFont, largeFont.Size)
+		fmt.Println(float64(SCREEN_HEIGHT/2 * GRID_SIZE) - h/2)
+		ops.GeoM.Translate(float64(SCREEN_WIDTH/2 * GRID_SIZE) - w/2,
+		float64(SCREEN_HEIGHT/2 * GRID_SIZE) - h/2)
+		ops.ColorScale.ScaleWithColor(color.White)
+		text.Draw(screen, mainText, largeFont, ops)
+		ops.GeoM.Reset()
+		ops.GeoM.Translate(float64(SCREEN_WIDTH/2 * GRID_SIZE) - w/2,
+		float64(SCREEN_HEIGHT/2 * GRID_SIZE) + h/2)
+		text.Draw(screen, "Press enter to continue...", normalFont, ops)
+		ops.GeoM.Reset()
+	}else {
+		//draw snake
+		for _, s := range g.snake.body {
+			vector.DrawFilledRect(screen, float32(s.x * GRID_SIZE), float32(s.y * GRID_SIZE),
+			float32(GRID_SIZE), float32(GRID_SIZE), color.White, false)
+		}
+
+		//draw food
+		vector.DrawFilledRect(screen, float32(g.food.x * GRID_SIZE), float32(g.food.y * GRID_SIZE),
+			float32(GRID_SIZE), float32(GRID_SIZE), color.RGBA{255, 0, 0, 0}, false)
+		
+		//draw score
+		ops.GeoM.Translate(0, 0)
+		text.Draw(screen, fmt.Sprintf("Score: %v", g.snake.score), normalFont, ops) 
+		ops.GeoM.Reset()
+	}
 }
 
 func(g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
@@ -96,7 +121,8 @@ dirLeft = Point{-1, 0}
 dirRight = Point{1, 0}
 //fonts
 mplusFaceSource *text.GoTextFaceSource
-fontFace *text.GoTextFace
+normalFont *text.GoTextFace
+largeFont *text.GoTextFace
 )
 
 func initGame() *Game {
@@ -106,45 +132,34 @@ func initGame() *Game {
 		log.Fatal(err)
 	}
 	mplusFaceSource = s	
-	fontFace = &text.GoTextFace{
+	normalFont = &text.GoTextFace{
 		Source: mplusFaceSource,
 		Size: float64(GRID_SIZE),
-	};
-	//init snake
-	snake := &Snake{
-		body: []BaseSprite{
-			{
-				Point: spawnRandomPoint(), 
-				image: nil, 
-			},
-		},
-		dir: Point{0, 0},
-		score: 0,
 	}
-	//init food
-	food := &Food{
-		BaseSprite: BaseSprite{
-				Point: spawnRandomPoint(), 
-				image: nil, 
-		},
-
+	largeFont = &text.GoTextFace{
+		Source: mplusFaceSource,
+		Size: float64(GRID_SIZE * 2),
 	}
 	
+	snake := spawnSnake()
+	food := spawnFood()
+
 	return &Game {
 		snake: snake,
 		food: food,
+		gameOver: false,
 	} 
 }
 
 
 func (s *Snake) moveSnake() {
-	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+	if ebiten.IsKeyPressed(ebiten.KeyUp) && s.dir != dirDown {
 		s.dir = dirUp
-	} else if ebiten.IsKeyPressed(ebiten.KeyDown) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyDown) && s.dir != dirUp{
 		s.dir = dirDown
-	} else if ebiten.IsKeyPressed(ebiten.KeyLeft) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyLeft) && s.dir != dirRight{
 		s.dir = dirLeft
-	} else if ebiten.IsKeyPressed(ebiten.KeyRight) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyRight) && s.dir != dirLeft{
 		s.dir = dirRight
 	}
 }
@@ -167,8 +182,49 @@ func (g *Game) updateSnake() {
 	g.snake.body[0].y += g.snake.dir.y
 }
 
+func spawnSnake() *Snake {
+	return &Snake{
+		body: []BaseSprite{
+			{
+				Point: spawnRandomPoint(), 
+				image: nil, 
+			},
+		},
+		dir: Point{0, 0},
+		score: 0,
+	}
+}
+
+func spawnFood() *Food {
+	return &Food{
+		BaseSprite: BaseSprite{
+				Point: spawnRandomPoint(), 
+				image: nil, 
+		},
+	}
+}
 
 func spawnRandomPoint() Point {
 	random := rand.New(rand.NewSource(int64(time.Now().UnixNano())))
 	return Point{random.Intn(SCREEN_WIDTH), random.Intn(SCREEN_HEIGHT)}
+}
+
+func (g *Game) collisionDetection() {
+	//collision with wall
+	if g.snake.body[0].x < 0 || g.snake.body[0].x > SCREEN_WIDTH || g.snake.body[0].y < 0 || g.snake.body[0].y > SCREEN_HEIGHT {
+		g.gameOver = true
+	}
+
+	//collide with body
+	for _, b := range g.snake.body[1:] {
+		if g.snake.body[0].Point == b.Point {
+			g.gameOver = true
+		}
+	}
+
+}
+
+func (g *Game) resetGame() {
+	g.snake = spawnSnake() 
+	g.food = spawnFood() 
 }
