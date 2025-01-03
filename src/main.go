@@ -50,7 +50,6 @@ func(g *Game) Draw(screen *ebiten.Image) {
 	if g.gameOver {
 		mainText := "GAME OVER"
 		w, h := text.Measure(mainText, largeFont, largeFont.Size)
-		fmt.Println(float64(SCREEN_HEIGHT/2 * GRID_SIZE) - h/2)
 		ops.GeoM.Translate(float64(SCREEN_WIDTH/2 * GRID_SIZE) - w/2,
 		float64(SCREEN_HEIGHT/2 * GRID_SIZE) - h/2)
 		ops.ColorScale.ScaleWithColor(color.White)
@@ -211,7 +210,8 @@ func spawnRandomPoint() Point {
 
 func (g *Game) collisionDetection() {
 	//collision with wall
-	if g.snake.body[0].x < 0 || g.snake.body[0].x > SCREEN_WIDTH || g.snake.body[0].y < 0 || g.snake.body[0].y > SCREEN_HEIGHT {
+	if g.snake.body[0].x < 0 || g.snake.body[0].x > SCREEN_WIDTH  - 1 || 
+		g.snake.body[0].y < 0 || g.snake.body[0].y > SCREEN_HEIGHT - 1{
 		g.gameOver = true
 	}
 
