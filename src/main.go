@@ -22,7 +22,8 @@ type Game struct{
 }
 
 func(g *Game) Update() error {
-	g.snake.moveSnake()	
+	g.snake.moveSnake()
+	g.updateSnake()
 	return nil
 }
 
@@ -81,6 +82,7 @@ dirDown = Point{0, 1}
 dirLeft = Point{-1, 0}
 dirRight = Point{1, 0}
 )
+
 func initGame() *Game {
 	//init snake
 	snake := &Snake{
@@ -118,12 +120,26 @@ func (s *Snake) moveSnake() {
 	} else if ebiten.IsKeyPressed(ebiten.KeyRight) {
 		s.dir = dirRight
 	}
-	s.body[0].x += s.dir.x
-	s.body[0].y += s.dir.y
 }
 
-func (g *Game) eatFood() {
+func (g *Game) updateSnake() {
+	head := g.snake.body[0]
+	
+	//eat food else move
+	if head.Point == g.food.Point {
+		//create new head and reattach body
+		head.Point = g.food.Point
+		g.snake.body = append([]BaseSprite{head}, g.snake.body[:len(g.snake.body)]...)
+		
+		//spawn new point for food
+		g.food.Point = spawnRandomPoint()
+	} else{
+		g.snake.body = append([]BaseSprite{head}, g.snake.body[:len(g.snake.body) - 1]...)
+	}
+	g.snake.body[0].x += g.snake.dir.x
+	g.snake.body[0].y += g.snake.dir.y
 }
+
 
 func spawnRandomPoint() Point {
 	random := rand.New(rand.NewSource(uint64(time.Now().UnixNano())))
