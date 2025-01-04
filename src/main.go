@@ -185,7 +185,7 @@ func spawnSnake() *Snake {
 	return &Snake{
 		body: []BaseSprite{
 			{
-				Point: spawnRandomPoint(), 
+				Point: Point{0, 0}, 
 				image: nil, 
 			},
 		},
@@ -205,7 +205,7 @@ func spawnFood() *Food {
 
 func spawnRandomPoint() Point {
 	random := rand.New(rand.NewSource(int64(time.Now().UnixNano())))
-	return Point{random.Intn(SCREEN_WIDTH), random.Intn(SCREEN_HEIGHT)}
+	return Point{random.Intn(SCREEN_WIDTH - 1) + 1, random.Intn(SCREEN_HEIGHT - 1) + 1}
 }
 
 func (g *Game) collisionDetection() {
